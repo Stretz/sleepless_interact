@@ -48,6 +48,8 @@ let idleTimer = 0;
 let holdFrame = 0;
 let selectTimer = 0;
 let defaultTint: [number, number, number] | null = null;
+let swallowOpenKey = "";
+let swallowOpenUntil = 0;
 
 function clearIdle() {
   window.clearTimeout(idleTimer);
@@ -229,6 +231,8 @@ function closeMenu() {
 function tryOpenMenu() {
   const state = useInteract.getState();
   if (!isCompactTarget(state) || state.expanded) return false;
+  swallowOpenKey = state.keyLabel.trim().toUpperCase() || "E";
+  swallowOpenUntil = performance.now() + 500;
   useInteract.setState({ expanded: true });
   bumpIdle();
   return true;
@@ -352,10 +356,21 @@ export function beginHold(index: number) {
 
 export function pressHotkey(key: string, down: boolean) {
   const state = useInteract.getState();
+  const pressed = key.trim().toUpperCase();
+  if (swallowOpenKey && performance.now() < swallowOpenUntil) {
+    if (pressed === swallowOpenKey) {
+      if (!down) {
+        swallowOpenKey = "";
+        swallowOpenUntil = 0;
+      }
+      return true;
+    }
+    swallowOpenKey = "";
+    swallowOpenUntil = 0;
+  }
+
   const listOpen = state.options.length > 1 && (!state.compactEnabled || state.expanded);
   if (!listOpen || selectionLocked()) return false;
-
-  const pressed = key.trim().toUpperCase();
   const index = state.options.findIndex((option, optionIndex) => rowKey(optionIndex, state.keyLabel, option.key) === pressed);
   if (index < 0) return false;
 
@@ -406,7 +421,8 @@ export function bindInteract() {
     const state = useInteract.getState();
     const reset = !!payload.resetIndex;
     const compact = state.compactEnabled && options.length > 1;
-    const expanded = compact ? (reset ? false : state.expanded) : true;
+    const wasOpenMenu = state.compactEnabled && state.options.length > 1 && state.expanded;
+    const expanded = compact ? (reset ? wasOpenMenu : state.expanded) : true;
     const currentIndex = reset ? 0 : Math.min(state.currentIndex, Math.max(0, options.length - 1));
     if (!compact || !expanded) clearIdle();
     clearHold();

@@ -116,6 +116,16 @@ end)
 dui.cursor = false
 dui.keyFocus = false
 dui.ownsFocus = false
+dui.ignoreHotkeyUntil = 0
+
+function dui.holdHotkey(key)
+    dui.ignoreHotkey = type(key) == 'string' and key:upper() or nil
+    dui.ignoreHotkeyUntil = GetGameTimer() + 400
+end
+
+function dui.releaseHotkey()
+    dui.ignoreHotkeyUntil = GetGameTimer() + 100
+end
 dui.lastOptions = nil
 dui.lastKey = nil
 dui.lastLabel = nil
@@ -231,6 +241,11 @@ end)
 
 RegisterNuiCallback('hotkey', function(data, cb)
     if type(data) == 'table' and type(data.key) == 'string' then
+        if data.down == true and dui.ignoreHotkey and GetGameTimer() < (dui.ignoreHotkeyUntil or 0)
+            and data.key:upper() == dui.ignoreHotkey then
+            cb(1)
+            return
+        end
         dui.sendMessage('hotkey', {
             key = data.key,
             down = data.down == true,

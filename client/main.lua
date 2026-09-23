@@ -73,17 +73,19 @@ lib.addKeybind({
     name = 'interact_action',
     description = locale('interact'),
     defaultKey = config.defaultInteractKey or 'E',
-    onPressed = function(self)
+        onPressed = function(self)
         if dui.keyFocus or dui.cursor then return end
         if GetGameTimer() > store.cooldownEndTime then
             if not next(store.current) then return end
             pressed = true
+            dui.holdHotkey(utils.toHumanKeybind('+interact_action'))
             dui.sendMessage("interact")
         end
     end,
     onReleased = function(self)
         if not pressed then return end
         pressed = false
+        dui.releaseHotkey()
         dui.sendMessage("release")
     end,
 })
@@ -639,7 +641,9 @@ end
 
 
 local function shouldHideInteract()
-    if IsNuiFocused() or LocalPlayer.state.hideInteract or (lib and lib.progressActive()) or hidePerKeybind or LocalPlayer.state.invOpen then
+    -- The open menu takes NUI focus so its keys stay on the prompt.
+    local otherUi = IsNuiFocused() and not dui.ownsFocus
+    if otherUi or LocalPlayer.state.hideInteract or (lib and lib.progressActive()) or hidePerKeybind or LocalPlayer.state.invOpen then
         return true
     end
     return false
@@ -821,6 +825,38 @@ local function setPromptVisible(show)
     dui.sendMessage('visible', false)
 end
 
+local OPTION_CATEGORIES = { 'global', 'model', 'entity', 'localEntity', 'coords' }
+
+local function bindOptionContext(index)
+    local contexts = store.current.contexts
+    local ctx = contexts and contexts[index]
+    if not ctx then return end
+    store.current.entity = ctx.entity
+    store.current.coords = ctx.coords
+    store.current.distance = ctx.distance
+    store.current.coordsId = ctx.coordId
+end
+
+local function eachCurrentOption(callback)
+    local options = store.current.options
+    if not options then return end
+
+    if store.current.contexts then
+        local list = options.group or {}
+        for j = 1, #list do
+            bindOptionContext(j)
+            callback(list[j])
+        end
+        return
+    end
+
+    for _, opts in pairs(options) do
+        for j = 1, #opts do
+            callback(opts[j])
+        end
+    end
+end
+
 local function drawLoop()
     if drawLoopRunning then return end
     drawLoopRunning = true
@@ -834,7 +870,7 @@ local function drawLoop()
         lib.requestStreamedTextureDict(centerDot.dict)
     end
 
-    local lastClosestItem, lastValidCount, lastValidOptions = nil, 0, nil
+    local lastGroupSignature, lastValidCount, lastValidOptions = nil, 0, nil
     local nearbyData = {}
     local playerCoords
     local aspectRatio = GetAspectRatio(true)
@@ -892,17 +928,9 @@ local function drawLoop()
                             coords, item.globalType)
                     end
 
-                    local id = item.bone or item.offset or item.entity or item.coordId
-                    local shouldUpdate = false
-
-                    if id == lastClosestItem and lastValidOptions then
-                        shouldUpdate = validOptionsChanged(validOpts, lastValidOptions)
-                    end
-
                     nearbyData[i] = {
                         item = item,
                         coords = coords,
-                        shouldUpdate = shouldUpdate,
                         hideCompletely = hideCompletely,
                         distance = distanceSq,
                         validOpts = validOpts,
@@ -920,6 +948,26 @@ local function drawLoop()
     local requireLookAt = config.requireLookAt ~= false
     local lookRadius = config.lookRadius or 0.08
     local lookRadiusSq = lookRadius * lookRadius
+    local grouped = {}
+    local groupedIds = {}
+    local focused = {}
+    local visible = {}
+
+    local function sortGrouped(a, b)
+        return a.id < b.id
+    end
+
+    local function addGrouped(data, item, coords)
+        local id = ('%s:%s'):format(item.entity or 0, item.bone or item.offset or item.coordId or 'base')
+        if groupedIds[id] then return end
+        groupedIds[id] = true
+        grouped[#grouped + 1] = {
+            id = id,
+            data = data,
+            item = item,
+            coords = coords,
+        }
+    end
 
     while #store.nearby > 0 or GetGameTimer() < hideUntil or promptVisible or next(indicatorFade) do
         Wait(0)
@@ -955,6 +1003,11 @@ local function drawLoop()
             )
         end
 
+        for i = #grouped, 1, -1 do grouped[i] = nil end
+        table.wipe(groupedIds)
+        for i = #focused, 1, -1 do focused[i] = nil end
+        for i = #visible, 1, -1 do visible[i] = nil end
+
         for i = 1, #store.nearby do
             local data = nearbyData[i]
 
@@ -962,106 +1015,225 @@ local function drawLoop()
                 local item = data.item
                 local coords = (item.entity and not movingEntity[item.entity] and data.coords) or
                     utils.getDrawCoordsForInteract(item)
-
                 local screenDistSq = utils.getScreenDistanceSquared(coords, aspectRatio)
+
                 if data.validOpts and data.validCount > 0 then
                     inRange = true
-                end
-                if not foundValid and data.validOpts and data.validCount > 0 and (not requireLookAt or screenDistSq <= lookRadiusSq) then
-                    foundValid = true
-
-                    local newClosestId = item.bone or item.offset or item.entity or item.coordId
-                    if data.shouldUpdate or lastClosestItem ~= newClosestId or lastValidCount ~= data.validCount then
-                        local newOptions = {}
-
-                        local resetIndex = lastClosestItem ~= newClosestId
-
-                        local promptTitle, promptIcon = promptMeta(item, data.validOpts)
-                        dui.sendMessage('setOptions', {
-                            options = data.validOpts,
-                            resetIndex = resetIndex,
-                            title = promptTitle,
-                            icon = promptIcon,
-                        })
-
-                        if data.validOpts then
-                            for _, opts in pairs(data.validOpts) do
-                                for j = 1, #opts do
-                                    local opt = opts[j]
-                                    newOptions[opt] = true
-                                    if not activeOptions[opt] then
-                                        activeOptions[opt] = true
-                                        local resp = (opt.onActive or opt.whileActive) and utils.getResponse(opt)
-
-                                        if opt.onActive then
-                                            pcall(opt.onActive, resp)
-                                        end
-
-                                        if opt.whileActive then
-                                            CreateThread(function()
-                                                while activeOptions[opt] do
-                                                    pcall(opt.whileActive, resp)
-                                                    Wait(0)
-                                                end
-                                            end)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-
-                        if lastValidOptions then
-                            for _, opts in pairs(lastValidOptions) do
-                                for j = 1, #opts do
-                                    local opt = opts[j]
-
-                                    if opt.onInactive and not newOptions[opt] and activeOptions[opt] then
-                                        pcall(opt.onInactive, utils.getResponse(opt))
-                                        activeOptions[opt] = nil
-                                    end
-                                end
-                            end
-                        end
-                    end
-
-                    lastClosestItem = newClosestId
-                    lastValidCount = data.validCount
-                    lastValidOptions = data.validOpts
-
-                    store.current = {
-                        options = data.validOpts,
-                        entity = item.entity,
-                        distance = data.distance,
+                    local entry = {
+                        data = data,
+                        item = item,
                         coords = coords,
-                        index = 1,
+                        screenDistSq = screenDistSq,
                     }
-
-                    lastDrawCoords = coords
-                    setPromptVisible(true)
-                    if not dui.cursor then
-                        local duiScale = config.duiScale or 0.12
-                        local drawH = duiScale
-                        local drawW = duiScale * ((dui.width or 1) / (dui.height or 1)) * (screenH / screenW)
-                        drawSpriteAtCoords(coords, dui.instance.dictName, dui.instance.txtName, drawW, drawH, 0.0, 255,
-                            255, 255, 255, screenW, screenH)
+                    visible[#visible + 1] = entry
+                    if screenDistSq <= lookRadiusSq then
+                        focused[#focused + 1] = entry
                     end
-                elseif indicatorsDrawn < maxIndicators and data.distance < maxDistSq and screenDistSq < math.huge then
-                    indicatorsDrawn = indicatorsDrawn + 1
-                    local distT = maxDist > 0 and math.min(math.sqrt(data.distance) / maxDist, 1.0) or 0.0
-                    local scale = spriteNear + (spriteFar - spriteNear) * distT
-                    local id = item.bone or item.offset or item.entity or item.coordId
-                    seenIndicators[id] = true
-                    local st = indicatorFade[id]
-                    if not st then
-                        st = { from = 0.0, to = 1.0, start = now, coords = coords, scale = scale }
-                        indicatorFade[id] = st
-                    else
-                        setIndicatorTarget(st, now, 1.0)
-                        st.coords = coords
-                        st.scale = scale
-                    end
-                    drawIndicator(st)
                 end
+            end
+        end
+
+        local seed = focused[1]
+        if not seed and not requireLookAt then
+            seed = visible[1]
+        end
+
+        if seed then
+            addGrouped(seed.data, seed.item, seed.coords)
+            for i = 1, #focused do
+                local entry = focused[i]
+                addGrouped(entry.data, entry.item, entry.coords)
+            end
+
+            local origin = seed.coords
+            local groupDistance = config.menuGroupDistance or 0.5
+            local groupDistanceSq = groupDistance * groupDistance
+            for i = 1, #visible do
+                local entry = visible[i]
+                local coords = entry.coords
+                local dx = coords.x - origin.x
+                local dy = coords.y - origin.y
+                local dz = coords.z - origin.z
+                if dx * dx + dy * dy + dz * dz <= groupDistanceSq then
+                    addGrouped(entry.data, entry.item, entry.coords)
+                end
+            end
+        end
+
+        local anchor = seed
+        local promptCoords = anchor and anchor.coords
+        if not promptCoords and dui.keyFocus and promptVisible and lastDrawCoords and store.current.options and not shouldHideInteract() then
+            promptCoords = lastDrawCoords
+        end
+
+        if promptCoords and anchor and #grouped > 0 then
+            foundValid = true
+            if #grouped > 1 then
+                table.sort(grouped, sortGrouped)
+            end
+
+            local promptOptions
+            local contexts
+            local totalCount
+
+            if #grouped == 1 then
+                promptOptions = anchor.data.validOpts
+                totalCount = anchor.data.validCount
+            else
+                local flat = {}
+                contexts = {}
+                for g = 1, #grouped do
+                    local entry = grouped[g]
+                    local opts = entry.data.validOpts
+                    local ctx = {
+                        entity = entry.item.entity,
+                        coords = entry.coords,
+                        distance = entry.data.distance,
+                        coordsId = entry.item.coordId,
+                    }
+                    for c = 1, #OPTION_CATEGORIES do
+                        local list = opts[OPTION_CATEGORIES[c]]
+                        if list then
+                            for j = 1, #list do
+                                local n = #flat + 1
+                                flat[n] = list[j]
+                                contexts[n] = ctx
+                            end
+                        end
+                    end
+                end
+                promptOptions = { group = flat }
+                totalCount = #flat
+            end
+
+            local ids = {}
+            for g = 1, #grouped do
+                ids[g] = grouped[g].id
+            end
+            table.sort(ids)
+            local signature = table.concat(ids, '|')
+            local signatureChanged = lastGroupSignature ~= signature
+            local changed = signatureChanged or lastValidCount ~= totalCount or validOptionsChanged(promptOptions, lastValidOptions)
+
+            if changed then
+                local resetIndex = signatureChanged and not dui.keyFocus
+                local included = {}
+                for _, opts in pairs(promptOptions) do
+                    for j = 1, #opts do
+                        included[opts[j]] = true
+                    end
+                end
+
+                eachCurrentOption(function(opt)
+                    if opt.onInactive and not included[opt] and activeOptions[opt] then
+                        pcall(opt.onInactive, utils.getResponse(opt))
+                        activeOptions[opt] = nil
+                    end
+                end)
+
+                store.current = {
+                    options = promptOptions,
+                    contexts = contexts,
+                    entity = anchor.item.entity,
+                    distance = anchor.data.distance,
+                    coords = anchor.coords,
+                    coordsId = anchor.item.coordId,
+                    index = 1,
+                }
+
+                eachCurrentOption(function(opt)
+                    if activeOptions[opt] then return end
+                    activeOptions[opt] = true
+                    local resp = (opt.onActive or opt.whileActive) and utils.getResponse(opt)
+                    if opt.onActive then
+                        pcall(opt.onActive, resp)
+                    end
+                    if opt.whileActive then
+                        CreateThread(function()
+                            while activeOptions[opt] do
+                                pcall(opt.whileActive, resp)
+                                Wait(0)
+                            end
+                        end)
+                    end
+                end)
+
+                local promptTitle, promptIcon = promptMeta(anchor.item, anchor.data.validOpts)
+                dui.sendMessage('setOptions', {
+                    options = promptOptions,
+                    resetIndex = resetIndex,
+                    title = promptTitle,
+                    icon = promptIcon,
+                })
+
+                lastValidOptions = promptOptions
+            end
+
+            lastGroupSignature = signature
+            lastValidCount = totalCount
+            if store.current.options then
+                store.current.entity = anchor.item.entity
+                store.current.coords = anchor.coords
+                store.current.distance = anchor.data.distance
+                store.current.coordsId = anchor.item.coordId
+            end
+            lastDrawCoords = anchor.coords
+        elseif promptCoords then
+            foundValid = true
+        end
+
+        if foundValid and promptCoords and not dui.cursor then
+            setPromptVisible(true)
+            local duiScale = config.duiScale or 0.12
+            local drawH = duiScale
+            local drawW = duiScale * ((dui.width or 1) / (dui.height or 1)) * (screenH / screenW)
+            drawSpriteAtCoords(promptCoords, dui.instance.dictName, dui.instance.txtName, drawW, drawH, 0.0, 255, 255,
+                255, 255, screenW, screenH)
+        elseif foundValid then
+            setPromptVisible(true)
+        end
+
+        local groupDistance = config.menuGroupDistance or 0.5
+        local groupDistanceSq = groupDistance * groupDistance
+        local drawnPoints = {}
+        if foundValid and promptCoords then
+            drawnPoints[1] = promptCoords
+        end
+
+        for i = 1, #visible do
+            local entry = visible[i]
+            local gid = ('%s:%s'):format(entry.item.entity or 0, entry.item.bone or entry.item.offset or entry.item.coordId or 'base')
+            local stacked = groupedIds[gid] == true
+            if not stacked then
+                local coords = entry.coords
+                for p = 1, #drawnPoints do
+                    local point = drawnPoints[p]
+                    local dx = coords.x - point.x
+                    local dy = coords.y - point.y
+                    local dz = coords.z - point.z
+                    if dx * dx + dy * dy + dz * dz <= groupDistanceSq then
+                        stacked = true
+                        break
+                    end
+                end
+            end
+            if not stacked and indicatorsDrawn < maxIndicators and entry.data.distance < maxDistSq and entry.screenDistSq < math.huge then
+                drawnPoints[#drawnPoints + 1] = entry.coords
+                indicatorsDrawn = indicatorsDrawn + 1
+                local distT = maxDist > 0 and math.min(math.sqrt(entry.data.distance) / maxDist, 1.0) or 0.0
+                local scale = spriteNear + (spriteFar - spriteNear) * distT
+                local id = entry.item.bone or entry.item.offset or entry.item.entity or entry.item.coordId
+                seenIndicators[id] = true
+                local st = indicatorFade[id]
+                if not st then
+                    st = { from = 0.0, to = 1.0, start = now, coords = entry.coords, scale = scale }
+                    indicatorFade[id] = st
+                else
+                    setIndicatorTarget(st, now, 1.0)
+                    st.coords = entry.coords
+                    st.scale = scale
+                end
+                drawIndicator(st)
             end
         end
 
@@ -1101,18 +1273,16 @@ local function drawLoop()
             end
 
             if next(store.current) then
-                for _, opts in pairs(store.current.options) do
-                    for j = 1, #opts do
-                        local opt = opts[j]
-
-                        if opt.onInactive and activeOptions[opt] then
-                            pcall(opt.onInactive, utils.getResponse(opt))
-                            activeOptions[opt] = nil
-                        end
+                eachCurrentOption(function(opt)
+                    if opt.onInactive and activeOptions[opt] then
+                        pcall(opt.onInactive, utils.getResponse(opt))
+                        activeOptions[opt] = nil
                     end
-                end
+                end)
                 store.current = {}
-                lastClosestItem = nil
+                lastGroupSignature = nil
+                lastValidCount = 0
+                lastValidOptions = nil
             end
         end
     end
@@ -1183,6 +1353,9 @@ RegisterNUICallback('select', function(data, cb)
     local currentTime = GetGameTimer()
     if store.current.options and currentTime > (store.cooldownEndTime or 0) then
         local option = store.current.options?[data[1]]?[data[2]]
+        if option then
+            bindOptionContext(data[2])
+        end
         if option and los.hasClear({ entity = store.current.entity, coordId = store.current.coordsId }, store.current.coords) then
             if option.canInteract then
                 local success, resp = pcall(option.canInteract, store.current.entity, store.current.distance,

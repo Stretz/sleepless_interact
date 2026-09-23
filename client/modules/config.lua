@@ -12,6 +12,9 @@ config.requireLookAt = true
 -- How close to the reticle the target must be.
 config.lookRadius = 0.05
 
+-- Targets within this many meters share one point and one menu.
+config.menuGroupDistance = 0.5
+
 -- Place unoffset entity options at the model center.
 config.autoCenter = true
 
@@ -40,7 +43,7 @@ config.hideWhenEmpty = {
 }
 
 -- Size of the world prompt.
-config.duiScale = 0.2
+config.duiScale = 0.15
 
 -- Maximum size of the prompt texture.
 config.duiResolution = 2048
