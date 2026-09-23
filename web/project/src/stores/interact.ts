@@ -522,6 +522,11 @@ export function bindInteract() {
     resetHold();
   });
 
+  observe("closeMenu", () => {
+    closeMenu();
+    resetHold();
+  });
+
   applyThemeName("eco");
 }
 

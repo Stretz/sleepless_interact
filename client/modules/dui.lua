@@ -131,6 +131,7 @@ dui.lastKey = nil
 dui.lastLabel = nil
 
 local cursorToken = 0
+local focusToken = 0
 local blocking = false
 
 local function mirror(action, value)
@@ -138,6 +139,23 @@ local function mirror(action, value)
         action = action,
         value = value,
     })
+end
+
+function dui.dismiss()
+    focusToken = focusToken + 1
+    if dui.cursor then
+        dui.cursor = false
+        cursorToken = cursorToken + 1
+        mirror('cursor', false)
+    end
+    dui.keyFocus = false
+    dui.applyFocus()
+    dui.sendMessage('closeMenu')
+end
+
+local function cancelPressed()
+    return IsDisabledControlJustPressed(0, 200) or IsDisabledControlJustPressed(0, 202)
+        or IsDisabledControlJustPressed(2, 200) or IsDisabledControlJustPressed(2, 202)
 end
 
 local function blockControls()
@@ -148,6 +166,11 @@ local function blockControls()
             DisableAllControlActions(0)
             DisableAllControlActions(1)
             DisableAllControlActions(2)
+            SetPauseMenuActive(false)
+            if cancelPressed() then
+                dui.dismiss()
+                break
+            end
             Wait(0)
         end
         blocking = false
@@ -234,9 +257,21 @@ RegisterNuiCallback('holdCursor', function(_, cb)
 end)
 
 RegisterNuiCallback('keyFocus', function(data, cb)
-    dui.keyFocus = type(data) == 'table' and data.open == true
-    dui.applyFocus()
+    local open = type(data) == 'table' and data.open == true
+    local token = focusToken
     cb(1)
+    SetTimeout(0, function()
+        if token ~= focusToken or open == dui.keyFocus then return end
+        dui.keyFocus = open
+        dui.applyFocus()
+    end)
+end)
+
+RegisterNuiCallback('closeMenu', function(_, cb)
+    cb(1)
+    SetTimeout(0, function()
+        dui.dismiss()
+    end)
 end)
 
 RegisterNuiCallback('hotkey', function(data, cb)
@@ -316,22 +351,18 @@ dui.handleDuiControls = function()
 
     local input = false
 
-    if (IsControlJustPressed(3, 180)) then -- SCROLL DOWN
+    local function tapped(control)
+        return IsControlJustPressed(0, control) or IsDisabledControlJustPressed(0, control)
+            or IsControlJustPressed(2, control) or IsDisabledControlJustPressed(2, control)
+            or IsControlJustPressed(3, control) or IsDisabledControlJustPressed(3, control)
+    end
+
+    if tapped(180) or tapped(173) then -- SCROLL / ARROW DOWN
         SendDuiMouseWheel(dui.instance.duiObject, -50, 0.0)
         input = true
     end
 
-    if (IsControlJustPressed(3, 181)) then -- SCROLL UP
-        SendDuiMouseWheel(dui.instance.duiObject, 50, 0.0)
-        input = true
-    end
-
-    if (IsControlJustPressed(3, 173)) then -- ARROW DOWN
-        SendDuiMouseWheel(dui.instance.duiObject, -50, 0.0)
-        input = true
-    end
-
-    if (IsControlJustPressed(3, 172)) then -- ARROW UP
+    if tapped(181) or tapped(172) then -- SCROLL / ARROW UP
         SendDuiMouseWheel(dui.instance.duiObject, 50, 0.0)
         input = true
     end

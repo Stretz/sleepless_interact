@@ -346,9 +346,13 @@ local function getOptionsForEntity(entity, globalType, model, netId)
     if not entity then return nil end
 
     if IsPedAPlayer(entity) then
-        return {
-            global = store.players,
+        local playerOptions = {
+            global = (store.players ~= nil and #store.players > 0 and store.players) or nil,
+            model = (model and store.models[model] ~= nil and #store.models[model] > 0 and store.models[model]) or nil,
+            entity = (netId and store.entities[netId] ~= nil and #store.entities[netId] > 0 and store.entities[netId]) or nil,
+            localEntity = (store.localEntities[entity] ~= nil and #store.localEntities[entity] > 0 and store.localEntities[entity]) or nil,
         }
+        return next(playerOptions) and playerOptions or nil
     end
 
     local options = {
@@ -1046,16 +1050,22 @@ local function drawLoop()
             end
 
             local origin = seed.coords
+            local seedEntity = seed.item.entity
+            local mergePlayer = seedEntity and IsPedAPlayer(seedEntity) and seedEntity or nil
             local groupDistance = config.menuGroupDistance or 0.5
             local groupDistanceSq = groupDistance * groupDistance
             for i = 1, #visible do
                 local entry = visible[i]
-                local coords = entry.coords
-                local dx = coords.x - origin.x
-                local dy = coords.y - origin.y
-                local dz = coords.z - origin.z
-                if dx * dx + dy * dy + dz * dz <= groupDistanceSq then
+                if mergePlayer and entry.item.entity == mergePlayer then
                     addGrouped(entry.data, entry.item, entry.coords)
+                else
+                    local coords = entry.coords
+                    local dx = coords.x - origin.x
+                    local dy = coords.y - origin.y
+                    local dz = coords.z - origin.z
+                    if dx * dx + dy * dy + dz * dz <= groupDistanceSq then
+                        addGrouped(entry.data, entry.item, entry.coords)
+                    end
                 end
             end
         end
@@ -1081,6 +1091,7 @@ local function drawLoop()
                 totalCount = anchor.data.validCount
             else
                 local flat = {}
+                local seen = {}
                 contexts = {}
                 for g = 1, #grouped do
                     local entry = grouped[g]
@@ -1095,9 +1106,13 @@ local function drawLoop()
                         local list = opts[OPTION_CATEGORIES[c]]
                         if list then
                             for j = 1, #list do
-                                local n = #flat + 1
-                                flat[n] = list[j]
-                                contexts[n] = ctx
+                                local option = list[j]
+                                if not seen[option] then
+                                    seen[option] = true
+                                    local n = #flat + 1
+                                    flat[n] = option
+                                    contexts[n] = ctx
+                                end
                             end
                         end
                     end

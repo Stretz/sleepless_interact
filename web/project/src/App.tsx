@@ -62,6 +62,19 @@ function useMenuKeys() {
         return;
       }
 
+      if (event.key === "Escape") {
+        const state = useInteract.getState();
+        if (!listIsOpen() && !state.cursor) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (isEnvBrowser()) {
+          window.postMessage({ action: "closeMenu" }, "*");
+          return;
+        }
+        post("closeMenu");
+        return;
+      }
+
       if (!listIsOpen()) return;
 
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
