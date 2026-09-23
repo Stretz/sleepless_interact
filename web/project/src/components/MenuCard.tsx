@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Keycap } from "@/components/Keycap";
 import { Mark } from "@/components/Mark";
 import { activate, beginHold, focusIndex, resetHold, selectMode, useInteract } from "@/stores/interact";
-import { rowKey } from "@/utils/misc";
+import { rowKey, toneStyle } from "@/utils/misc";
 
 export function MenuCard() {
   const mode = useInteract(selectMode);
@@ -40,6 +40,7 @@ export function MenuCard() {
             <button
               type="button"
               className={active ? "row is-active" : "row"}
+              style={toneStyle(option.color)}
               key={`${option.targetType}-${option.targetId}`}
               onMouseEnter={() => focusIndex(index)}
               onClick={() => {

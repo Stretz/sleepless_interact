@@ -1,6 +1,7 @@
 import { Keycap } from "@/components/Keycap";
 import { Mark } from "@/components/Mark";
 import { activate, beginHold, resetHold, selectMode, useInteract } from "@/stores/interact";
+import { toneStyle } from "@/utils/misc";
 
 export function FocusChip() {
   const mode = useInteract(selectMode);
@@ -23,6 +24,7 @@ export function FocusChip() {
     <button
       type="button"
       className="chip panel"
+      style={single ? toneStyle(option.color) : undefined}
       onClick={() => {
         if (single && option.holdTime) return;
         activate(0);

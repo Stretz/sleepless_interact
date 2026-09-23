@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import type { CSSProperties } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -21,6 +22,19 @@ export function isDuiSurface() {
 
 export function isCursorSurface() {
   return !isEnvBrowser() && !isDuiSurface();
+}
+
+export function toneStyle(color?: [number, number, number, number]) {
+  if (!color) return undefined;
+  const channel = (value: number) =>
+    Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0");
+  const hex = `#${channel(color[0])}${channel(color[1])}${channel(color[2])}`;
+  return {
+    "--line": hex,
+    "--icon": hex,
+    "--keycap-line": hex,
+    "--key-accent": hex,
+  } as CSSProperties;
 }
 
 export function iconClass(icon?: string | null) {
