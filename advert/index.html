@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>sleepless interact</title>
+    <style>
+      @font-face {
+        font-family: Inter;
+        font-style: normal;
+        font-weight: 500;
+        font-display: block;
+        src: url("../web/dist/assets/inter-latin-500-normal-Cerq10X2.woff2") format("woff2");
+      }
+
+      @font-face {
+        font-family: Inter;
+        font-style: normal;
+        font-weight: 600;
+        font-display: block;
+        src: url("../web/dist/assets/inter-latin-600-normal-LgqL8muc.woff2") format("woff2");
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: #021407;
+        color: #ffffff;
+        font-family: Inter, sans-serif;
+      }
+
+      main {
+        width: 1080px;
+        padding: 68px 72px 64px;
+      }
+
+      .kicker {
+        margin: 0;
+        color: #8fbf55;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .rule {
+        width: 52px;
+        height: 2px;
+        margin: 16px 0 22px;
+        background: #009b0f;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 64px;
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 0.92;
+      }
+
+      .lede {
+        max-width: 16em;
+        margin: 18px 0 0;
+        color: #d5e7c2;
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+
+      .mast {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 32px;
+      }
+
+      .mast img {
+        width: 360px;
+        height: auto;
+      }
+
+      figure {
+        margin: 0;
+      }
+
+      figcaption {
+        margin-top: 4px;
+        color: #8fbf55;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .hero,
+      .wide {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .hero {
+        margin-top: 36px;
+      }
+
+      .hero img {
+        width: 540px;
+        height: auto;
+      }
+
+      .hero figcaption,
+      .wide figcaption,
+      .pair figcaption {
+        text-align: center;
+      }
+
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 28px;
+        margin-top: 8px;
+      }
+
+      .pair img,
+      .wide img {
+        width: 100%;
+        height: auto;
+      }
+
+      .wide {
+        margin-top: 20px;
+      }
+
+      .wide img {
+        width: 760px;
+      }
+
+      .single {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        margin-top: 8px;
+      }
+
+      .single img {
+        width: 280px;
+        height: auto;
+      }
+
+      .themes {
+        margin-top: 36px;
+        padding-top: 28px;
+        border-top: 1px solid #145214;
+      }
+
+      .themes p {
+        margin: 0 0 14px;
+        color: #d5e7c2;
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .theme-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 18px 22px;
+      }
+
+      .theme-row figure {
+        width: 200px;
+      }
+
+      .theme-row img {
+        width: 100%;
+        height: auto;
+      }
+
+      .theme-row figcaption {
+        text-align: center;
+      }
+
+      .foot {
+        margin: 28px 0 0;
+        color: #6a9a48;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="mast">
+        <div>
+          <p class="kicker">Eco theme</p>
+          <div class="rule"></div>
+          <h1>sleepless<br />interact</h1>
+          <p class="lede">The prompt stays small. Open it, and every option has its own key.</p>
+        </div>
+        <figure>
+          <img src="shots/focus.png" alt="Compact prompt reading Police Armory Locker with an E key" />
+          <figcaption>Starts as a single key</figcaption>
+        </figure>
+      </header>
+
+      <figure class="hero">
+        <img src="shots/menu.png" alt="Open menu with Equip Duty Uniform, Take Reinforced Vest, Grab Field Medkit, and Open Personal Stash" />
+        <figcaption>E, F, G, and H each run their own row. Alt and click works as well.</figcaption>
+      </figure>
+
+      <section class="pair">
+        <figure>
+          <img src="shots/hold.png" alt="Grab Field Medkit with the hold ring partly filled" />
+          <figcaption>Hold, and that same ring fills</figcaption>
+        </figure>
+        <figure>
+          <img src="shots/tick.png" alt="Equip Duty Uniform confirmed with a tick in place of the key" />
+          <figcaption>The key turns into a tick</figcaption>
+        </figure>
+      </section>
+
+      <figure class="wide">
+        <img src="shots/wide.png" alt="Wider menu titled Enterprise Evidence Processing Desk" />
+        <figcaption>Longer titles widen the card</figcaption>
+      </figure>
+
+      <figure class="single">
+        <img src="shots/single.png" alt="Single Unlock chip" />
+        <figcaption>One action stays one chip. It never opens a list.</figcaption>
+      </figure>
+
+      <section class="themes">
+        <p>Seven themes. Eco is the default.</p>
+        <div class="theme-row">
+          <figure>
+            <img src="shots/theme-eco.png" alt="Eco theme" />
+            <figcaption>Eco</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-modern.png" alt="Modern theme" />
+            <figcaption>Modern</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-vice.png" alt="Vice theme" />
+            <figcaption>Vice</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-cyber.png" alt="Cyber theme" />
+            <figcaption>Cyber</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-light.png" alt="Light theme" />
+            <figcaption>Light</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-retro.png" alt="Retro theme" />
+            <figcaption>Retro</figcaption>
+          </figure>
+          <figure>
+            <img src="shots/theme-noir.png" alt="Noir theme" />
+            <figcaption>Noir</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <p class="foot">ox_target · qtarget · qb-target</p>
+    </main>
+  </body>
+</html>
