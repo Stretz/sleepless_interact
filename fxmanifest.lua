@@ -20,7 +20,9 @@ client_scripts {
 
 files {
 	'locales/*.json',
-	'web/**',
+	'web/dist/index.html',
+	'web/dist/**/*',
+	'web/indicator.png',
 	'client/modules/*.lua',
 	'client/framework/*.lua',
 	'client/compat/resources/*.lua'
@@ -30,5 +32,7 @@ provides {
 	'ox_target',
 	'qtarget'
 }
+
+ui_page 'web/dist/index.html'
 
 dependency 'ox_lib'

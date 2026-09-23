@@ -74,6 +74,7 @@ lib.addKeybind({
     description = locale('interact'),
     defaultKey = config.defaultInteractKey or 'E',
     onPressed = function(self)
+        if dui.keyFocus or dui.cursor then return end
         if GetGameTimer() > store.cooldownEndTime then
             if not next(store.current) then return end
             pressed = true
@@ -89,6 +90,21 @@ lib.addKeybind({
 
 dui.syncInteractKey()
 SetTimeout(500, dui.syncInteractKey)
+
+if config.enableClick ~= false then
+    lib.addKeybind({
+        name = 'sleepless_interact:click',
+        description = 'Click interaction',
+        defaultKey = config.clickKey or 'LMENU',
+        onPressed = function()
+            if not next(store.current) then return end
+            dui.setCursor(true)
+        end,
+        onReleased = function()
+            dui.setCursor(false)
+        end,
+    })
+end
 
 CreateThread(function()
     local wasPaused = false
@@ -743,6 +759,53 @@ local function drawInteractDebug(entries, count)
     end
 end
 
+local GROUP_LOCALE = {
+    vehicles = 'group_vehicle',
+    peds = 'group_ped',
+    players = 'group_player',
+    objects = 'group_object',
+}
+
+local GROUP_ICON = {
+    vehicles = 'fa-solid fa-car',
+    peds = 'fa-solid fa-user',
+    players = 'fa-solid fa-user',
+    objects = 'fa-solid fa-cube',
+}
+
+---@param item NearbyItem
+---@param validOpts? table
+---@return string? title
+---@return string? icon
+local function promptMeta(item, validOpts)
+    local title = type(item.label) == 'string' and item.label ~= '' and item.label or nil
+    local icon = type(item.icon) == 'string' and item.icon ~= '' and item.icon or nil
+
+    if validOpts then
+        for _, opts in pairs(validOpts) do
+            for i = 1, #opts do
+                local opt = opts[i]
+                if not title and type(opt.menu) == 'string' and opt.menu ~= '' then
+                    title = opt.menu
+                end
+                if not icon and type(opt.menuIcon) == 'string' and opt.menuIcon ~= '' then
+                    icon = opt.menuIcon
+                end
+            end
+        end
+    end
+
+    local group = item.globalType
+    if not title and group and GROUP_LOCALE[group] then
+        title = locale(GROUP_LOCALE[group])
+    end
+    if not icon and group then
+        icon = GROUP_ICON[group]
+    end
+
+    return title, icon
+end
+
 local function setPromptVisible(show)
     if show then
         if promptVisible then return end
@@ -913,7 +976,13 @@ local function drawLoop()
 
                         local resetIndex = lastClosestItem ~= newClosestId
 
-                        dui.sendMessage('setOptions', { options = data.validOpts, resetIndex = resetIndex })
+                        local promptTitle, promptIcon = promptMeta(item, data.validOpts)
+                        dui.sendMessage('setOptions', {
+                            options = data.validOpts,
+                            resetIndex = resetIndex,
+                            title = promptTitle,
+                            icon = promptIcon,
+                        })
 
                         if data.validOpts then
                             for _, opts in pairs(data.validOpts) do
@@ -969,11 +1038,13 @@ local function drawLoop()
 
                     lastDrawCoords = coords
                     setPromptVisible(true)
-                    local duiScale = config.duiScale or 0.12
-                    local drawH = duiScale
-                    local drawW = duiScale * ((dui.width or 1) / (dui.height or 1)) * (screenH / screenW)
-                    drawSpriteAtCoords(coords, dui.instance.dictName, dui.instance.txtName, drawW, drawH, 0.0, 255, 255,
-                        255, 255, screenW, screenH)
+                    if not dui.cursor then
+                        local duiScale = config.duiScale or 0.12
+                        local drawH = duiScale
+                        local drawW = duiScale * ((dui.width or 1) / (dui.height or 1)) * (screenH / screenW)
+                        drawSpriteAtCoords(coords, dui.instance.dictName, dui.instance.txtName, drawW, drawH, 0.0, 255,
+                            255, 255, 255, screenW, screenH)
+                    end
                 elseif indicatorsDrawn < maxIndicators and data.distance < maxDistSq and screenDistSq < math.huge then
                     indicatorsDrawn = indicatorsDrawn + 1
                     local distT = maxDist > 0 and math.min(math.sqrt(data.distance) / maxDist, 1.0) or 0.0
@@ -1021,7 +1092,7 @@ local function drawLoop()
 
         if not foundValid then
             setPromptVisible(false)
-            if lastDrawCoords and GetGameTimer() < hideUntil then
+            if not dui.cursor and lastDrawCoords and GetGameTimer() < hideUntil then
                 local duiScale = config.duiScale or 0.12
                 local drawH = duiScale
                 local drawW = duiScale * ((dui.width or 1) / (dui.height or 1)) * (screenH / screenW)
@@ -1120,6 +1191,10 @@ RegisterNUICallback('select', function(data, cb)
                     cb(1)
                     return
                 end
+            end
+
+            if dui.cursor then
+                dui.setCursor(false)
             end
 
             if option.onSelect then

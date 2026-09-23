@@ -46,12 +46,12 @@ config.duiScale = 0.2
 config.duiResolution = 2048
 
 -- Prompt theme.
-config.theme = 'modern'
+config.theme = 'eco'
 
 -- Accent color for each theme.
 config.themeColors = {
 	legacy = { 28, 100, 184, 200 },
-	modern = { 49, 164, 252, 255 },
+	modern = { 139, 193, 40, 255 },
 	minimal = { 168, 186, 204, 255 },
 	light = { 37, 99, 235, 255 },
 	retro = { 255, 176, 32, 255 },
@@ -60,6 +60,7 @@ config.themeColors = {
 	noir = { 240, 240, 236, 255 },
 	industrial = { 212, 168, 48, 255 },
 	fantasy = { 212, 175, 110, 255 },
+	eco = { 0, 155, 15, 255 },
 }
 
 -- Accent color used for every theme. Nil uses the theme color.
@@ -111,5 +112,11 @@ config.defaultShowKeyBind = 'LMENU'
 
 -- Hold or toggle the show key.
 config.showKeyBindBehavior = 'toggle'
+
+-- Hold to free the cursor and click a prompt button. Right click puts the camera back.
+config.enableClick = true
+
+-- Default cursor key. Left Alt.
+config.clickKey = 'LMENU'
 
 return config

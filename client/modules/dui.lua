@@ -39,7 +39,7 @@ function dui.register()
 
     dui.instance = lib.dui:new(
         {
-            url = ("nui://%s/web/index.html"):format(cache.resource),
+            url = ("nui://%s/web/dist/index.html?surface=dui"):format(cache.resource),
             width = width,
             height = height,
         }
@@ -85,7 +85,12 @@ AddEventHandler('ox_lib:setLocale', function()
     dui.syncLocales()
 end)
 
-RegisterNuiCallback('load', function(_, cb)
+RegisterNuiCallback('load', function(data, cb)
+    if type(data) == 'table' and data.surface == 'cursor' then
+        cb(1)
+        return
+    end
+
     dui.loaded = true
     Wait(1000)
     cb(1)
@@ -108,11 +113,168 @@ RegisterNuiCallback('promptAnchor', function(data, cb)
     cb(1)
 end)
 
+dui.cursor = false
+dui.keyFocus = false
+dui.ownsFocus = false
+dui.lastOptions = nil
+dui.lastKey = nil
+dui.lastLabel = nil
+
+local cursorToken = 0
+local blocking = false
+
+local function mirror(action, value)
+    pcall(SendNUIMessage, {
+        action = action,
+        value = value,
+    })
+end
+
+local function blockControls()
+    if blocking then return end
+    blocking = true
+    CreateThread(function()
+        while dui.cursor or dui.keyFocus do
+            DisableAllControlActions(0)
+            DisableAllControlActions(1)
+            DisableAllControlActions(2)
+            Wait(0)
+        end
+        blocking = false
+    end)
+end
+
+function dui.applyFocus()
+    local focused = dui.cursor or dui.keyFocus
+    if focused then
+        SetNuiFocus(true, dui.cursor == true)
+        SetNuiFocusKeepInput(false)
+        dui.ownsFocus = true
+        blockControls()
+        return
+    end
+
+    if not dui.ownsFocus then return end
+    dui.ownsFocus = false
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end
+
+function dui.setCursor(on)
+    on = on == true
+    if on == dui.cursor then return end
+    if on and not next(store.current) then return end
+
+    dui.cursor = on
+    cursorToken = cursorToken + 1
+    local token = cursorToken
+    dui.applyFocus()
+
+    if not on then
+        mirror('cursor', false)
+        return
+    end
+
+    if dui.lastOptions then
+        mirror('setOptions', dui.lastOptions)
+    end
+    if dui.lastKey then
+        mirror('setKey', dui.lastKey)
+    end
+    if dui.lastLabel then
+        mirror('setLabel', dui.lastLabel)
+    end
+    mirror('visible', true)
+    mirror('openMenu')
+    if dui.instance then
+        dui.instance:sendMessage({ action = 'openMenu' })
+    end
+    mirror('cursor', {
+        scale = (config.duiScale or 0.2) * 7.4,
+        x = 0.5,
+        y = 0.5,
+    })
+
+    CreateThread(function()
+        while dui.cursor and token == cursorToken do
+            if not next(store.current) or not store.current.coords then
+                dui.setCursor(false)
+                return
+            end
+
+            local coords = store.current.coords
+            local visible, sx, sy = GetScreenCoordFromWorldCoord(coords.x, coords.y, coords.z)
+            if visible then
+                mirror('cursorMove', { x = sx, y = sy })
+            end
+
+            Wait(0)
+        end
+    end)
+end
+
+RegisterNuiCallback('releaseCursor', function(_, cb)
+    dui.setCursor(false)
+    cb(1)
+end)
+
+RegisterNuiCallback('holdCursor', function(_, cb)
+    dui.setCursor(true)
+    cb(1)
+end)
+
+RegisterNuiCallback('keyFocus', function(data, cb)
+    dui.keyFocus = type(data) == 'table' and data.open == true
+    dui.applyFocus()
+    cb(1)
+end)
+
+RegisterNuiCallback('hotkey', function(data, cb)
+    if type(data) == 'table' and type(data.key) == 'string' then
+        dui.sendMessage('hotkey', {
+            key = data.key,
+            down = data.down == true,
+            cursor = dui.cursor == true,
+        })
+    end
+    cb(1)
+end)
+
+RegisterNuiCallback('scroll', function(data, cb)
+    local delta = type(data) == 'table' and tonumber(data.delta) or 0
+    if delta ~= 0 then
+        dui.sendMessage('scroll', {
+            delta = delta,
+            cursor = dui.cursor == true,
+        })
+    end
+    cb(1)
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= cache.resource then return end
+    dui.keyFocus = false
+    dui.cursor = false
+    dui.ownsFocus = false
+    SetNuiFocus(false, false)
+    SetNuiFocusKeepInput(false)
+end)
+
 function dui.sendMessage(action, value)
+    if action == 'setOptions' then
+        dui.lastOptions = value
+    elseif action == 'setKey' then
+        dui.lastKey = value
+    elseif action == 'setLabel' then
+        dui.lastLabel = value
+    end
+
     dui.instance:sendMessage({
         action = action,
         value = value
     })
+
+    mirror(action, value)
 
     if action == 'setOptions' then
         dui.syncInteractKey()

@@ -1,5 +1,9 @@
 {
   "interact": "Interact",
   "interact_enabled": "Enabled",
-  "interact_disabled": "Disabled"
+  "interact_disabled": "Disabled",
+  "group_vehicle": "Vehicle",
+  "group_ped": "Person",
+  "group_player": "Player",
+  "group_object": "Object"
 }
