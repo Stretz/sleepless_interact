@@ -162,7 +162,7 @@ export const useInteract = create<InteractState>((_set, get) => ({
   cooldown: false,
   compactEnabled: true,
   idleMs: 2500,
-  expanded: true,
+  expanded: false,
   options: [],
   currentIndex: 0,
   holding: false,
@@ -410,7 +410,7 @@ export function bindInteract() {
     const state = useInteract.getState();
     const compactEnabled = config.compact == null ? state.compactEnabled : !!config.compact;
     const idleMs = config.idleMs == null ? state.idleMs : Math.max(500, Number(config.idleMs) || 2500);
-    const expanded = compactEnabled && state.options.length > 1 ? state.expanded : true;
+    const expanded = compactEnabled && state.options.length > 1 && state.expanded;
     if (expanded) clearIdle();
     useInteract.setState({ compactEnabled, idleMs, expanded });
   });
@@ -421,8 +421,8 @@ export function bindInteract() {
     const state = useInteract.getState();
     const reset = !!payload.resetIndex;
     const compact = state.compactEnabled && options.length > 1;
-    const wasOpenMenu = state.compactEnabled && state.options.length > 1 && state.expanded;
-    const expanded = compact ? (reset ? wasOpenMenu : state.expanded) : true;
+    const menuWasOpen = state.compactEnabled && state.options.length > 1 && state.expanded;
+    const expanded = compact && menuWasOpen;
     const currentIndex = reset ? 0 : Math.min(state.currentIndex, Math.max(0, options.length - 1));
     if (!compact || !expanded) clearIdle();
     clearHold();
