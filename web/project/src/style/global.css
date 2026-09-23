@@ -170,7 +170,7 @@ body.is-visible .prompt.is-cooldown {
   align-items: center;
   gap: 0.42rem;
   width: max-content;
-  max-width: 18rem;
+  max-width: 24rem;
   height: 1.92rem;
   padding: var(--chip-edge) var(--chip-edge) var(--chip-edge) 0.58rem;
   border-radius: 0.96rem;
@@ -198,6 +198,7 @@ body.is-visible .prompt.is-cooldown {
 }
 
 .chip-label {
+  flex: 1 1 auto;
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -222,9 +223,12 @@ body.is-visible .prompt.is-cooldown {
 }
 
 .menu {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: max-content;
   min-width: 12.4rem;
-  max-width: 16.5rem;
+  max-width: 24rem;
   padding: 0.48rem 0.28rem 0.22rem;
   border-radius: 0.7rem;
   transform-origin: center center;
@@ -245,6 +249,7 @@ body.is-visible .prompt.is-cooldown {
   display: flex;
   align-items: center;
   gap: 0.42rem;
+  width: 100%;
   min-height: 1.7rem;
   padding: 0 0.1rem 0.18rem 0.28rem;
 }
@@ -254,6 +259,7 @@ body.is-visible .prompt.is-cooldown {
 }
 
 .menu-title {
+  flex: 1 1 auto;
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -262,7 +268,9 @@ body.is-visible .prompt.is-cooldown {
 .rows {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.08rem;
+  width: 100%;
   max-height: 9.4rem;
   overflow-x: hidden;
   overflow-y: auto;
@@ -345,7 +353,7 @@ button.chip:focus {
 }
 
 .row-label {
-  flex: 1;
+  flex: 1 1 auto;
   font-size: 0.74rem;
   font-weight: 500;
   letter-spacing: -0.011em;

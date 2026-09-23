@@ -5,11 +5,10 @@ import { previewClose, previewHold, previewOpen, useInteract } from "@/stores/in
 const THEMES = ["eco", "modern", "vice", "cyber", "light", "retro", "noir"];
 
 const POLICE = [
-  { label: "Equip Uniform", icon: "fa-solid fa-shirt" },
-  { label: "Take Duty Vest", icon: "fa-solid fa-vest" },
-  { label: "Grab Medkit", icon: "fa-solid fa-kit-medical", holdTime: 1500 },
-  { label: "Change Outfit", icon: "fa-solid fa-arrows-rotate" },
-  { label: "Personal Stash", icon: "fa-solid fa-box" },
+  { label: "Equip Duty Uniform", icon: "fa-solid fa-shirt" },
+  { label: "Take Reinforced Vest", icon: "fa-solid fa-vest" },
+  { label: "Grab Field Medkit", icon: "fa-solid fa-kit-medical", holdTime: 1500 },
+  { label: "Open Personal Stash", icon: "fa-solid fa-box" },
 ];
 
 const VEHICLE = [
@@ -42,7 +41,7 @@ function scenePayload(scene: Scene) {
   }
 
   return {
-    title: "Police Locker",
+    title: "Police Armory Locker",
     icon: "fa-solid fa-shield-halved",
     options: { global: POLICE },
   };
@@ -79,7 +78,7 @@ export function BrowserDock() {
     if (!isEnvBrowser()) return;
     document.documentElement.dataset.browser = "true";
     window.postMessage({ action: "visible", value: true }, "*");
-    window.postMessage({ action: "setMenu", value: { compact: true, idleMs: 8000 } }, "*");
+    window.postMessage({ action: "setMenu", value: { compact: true, idleMs: 600000 } }, "*");
     publish("police");
     window.setTimeout(() => previewOpen(), 0);
   }, []);
